@@ -339,8 +339,15 @@ function loadRecords() {
     });
     renderFeed();
   }).catch(function(err) {
+    // Zoho returns HTTP 404 + code 3100 when a report has zero matching records — not an error, just empty.
+    const responseText = (err && err.responseText) ? err.responseText : JSON.stringify(err || "");
+    if (responseText.indexOf('"code":3100') !== -1) {
+      allRecords = [];
+      renderFeed();
+      return;
+    }
     document.getElementById("feed").innerHTML =
-      '<div class="error">Failed to load: ' + escapeHtml(JSON.stringify(err)) + '</div>';
+      '<div class="error">Failed to load: ' + escapeHtml(responseText) + '</div>';
   });
 }
 
