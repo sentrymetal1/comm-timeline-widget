@@ -386,8 +386,8 @@ function saveEntry() {
     Communication_Type: type,
     Direction:          direction,
     Subject:            subject,
-    Body:               body,
-    TimeStamp:          zohoNow()
+    Body:               body
+    // TimeStamp + Manufacturer both auto-populated by Set_Manufacturer_From_User workflow
   };
   if (ctx.lead_id)          data.Related_Lead          = ctx.lead_id;
   if (ctx.rep_id)           data.Client_Representative = ctx.rep_id;
