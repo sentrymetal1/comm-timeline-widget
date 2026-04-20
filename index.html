@@ -264,6 +264,14 @@ function directionLabel(dir) {
   return "";
 }
 
+function zohoNow() {
+  const d = new Date();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const pad = n => String(n).padStart(2, '0');
+  return pad(d.getDate()) + '-' + months[d.getMonth()] + '-' + d.getFullYear() + ' ' +
+         pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
 function lookupDisplay(fld) {
   if (!fld) return "";
   if (typeof fld === "string") return fld;
@@ -311,7 +319,7 @@ function renderFeed() {
           (body ? '<div class="entry-content">' + escapeHtml(body) + '</div>' : '') +
           (internalRep ? '<div class="entry-rep">logged by ' + escapeHtml(internalRep) + '</div>' : '') +
         '</div>' +
-        '<div class="entry-meta">' + escapeHtml(fmtTime(r.Timestamp)) + '</div>' +
+        '<div class="entry-meta">' + escapeHtml(fmtTime(r.TimeStamp)) + '</div>' +
       '</div>'
     );
   }).join("");
@@ -336,8 +344,8 @@ function loadRecords() {
   }).then(function(resp) {
     allRecords = (resp && resp.data) ? resp.data : [];
     allRecords.sort((a, b) => {
-      const da = new Date(a.Timestamp || a.Added_Time || 0);
-      const db = new Date(b.Timestamp || b.Added_Time || 0);
+      const da = new Date(a.TimeStamp || a.Added_Time || 0);
+      const db = new Date(b.TimeStamp || b.Added_Time || 0);
       return db - da;
     });
     renderFeed();
@@ -378,7 +386,8 @@ function saveEntry() {
     Communication_Type: type,
     Direction:          direction,
     Subject:            subject,
-    Body:               body
+    Body:               body,
+    TimeStamp:          zohoNow()
   };
   if (ctx.lead_id)          data.Related_Lead          = ctx.lead_id;
   if (ctx.rep_id)           data.Client_Representative = ctx.rep_id;
