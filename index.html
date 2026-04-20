@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Communication Timeline</title>
+<script src="https://js.zohostatic.com/zohofinance/v1/ZohoEmbededAppSDK.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: #2d2d2d;
+    background: #f5f6f8;
+    padding: 16px;
+  }
+
+  #msg-area { margin-bottom: 10px; }
+  .error { background: #fef2f2; color: #dc2626; padding: 10px 12px; border-radius: 6px; font-size: 12px; }
+  .success { background: #f0fdf4; color: #16a34a; padding: 10px 12px; border-radius: 6px; font-size: 12px; }
+
+  .quick-log {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .ql-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .ql-row.end { justify-content: flex-end; margin-bottom: 0; margin-top: 8px; }
+  .quick-log select,
+  .quick-log input,
+  .quick-log textarea {
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid #e4e7ec;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #2d2d2d;
+    background: #fff;
+    outline: none;
+  }
+  .quick-log select:focus,
+  .quick-log input:focus,
+  .quick-log textarea:focus { border-color: #2563eb; }
+  .quick-log select { width: 140px; }
+  .quick-log input.subject { flex: 1; }
+  .quick-log textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+  }
+  .quick-log button {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .quick-log button:hover { background: #1d4ed8; }
+  .quick-log button:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 16px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip:hover { color: #2563eb; border-color: #2563eb; }
+  .chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .chip.active:hover { color: #fff; }
+
+  .feed { display: flex; flex-direction: column; gap: 10px; }
+
+  .entry {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+  .entry-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .entry-icon.email    { background: #eff6ff; color: #2563eb; }
+  .entry-icon.call     { background: #f0fdf4; color: #16a34a; }
+  .entry-icon.meeting  { background: #fef3c7; color: #b45309; }
+  .entry-icon.note     { background: #f3f4f6; color: #6b7280; }
+  .entry-icon.sms      { background: #ede9fe; color: #7c3aed; }
+  .entry-icon.followup { background: #fee2e2; color: #dc2626; }
+
+  .entry-body { min-width: 0; }
+  .entry-header-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .entry-type {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+  }
+  .entry-direction { font-size: 11px; color: #aaa; }
+  .entry-subject {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+  .entry-content {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .entry-rep {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 6px;
+    font-style: italic;
+  }
+  .entry-meta {
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .loading, .empty {
+    color: #9ca3af;
+    text-align: center;
+    padding: 40px 0;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div id="msg-area"></div>
+
+<div class="quick-log">
+  <div class="ql-row">
+    <select id="type">
+      <option value="Note">Note</option>
+      <option value="Email">Email</option>
+      <option value="Call">Call</option>
+      <option value="Meeting">Meeting</option>
+      <option value="SMS">SMS</option>
+      <option value="Follow-Up">Follow-Up</option>
+    </select>
+    <select id="direction">
+      <option value="Outbound">Outbound</option>
+      <option value="Inbound">Inbound</option>
+      <option value="Internal Note">Internal Note</option>
+    </select>
+    <input type="text" class="subject" id="subject" placeholder="Subject (optional)" />
+  </div>
+  <textarea id="body" placeholder="Log an interaction…"></textarea>
+  <div class="ql-row end">
+    <button id="save-btn">Log</button>
+  </div>
+</div>
+
+<div class="filter-chips" id="chips">
+  <div class="chip active" data-filter="All">All</div>
+  <div class="chip" data-filter="Email">Email</div>
+  <div class="chip" data-filter="Call">Call</div>
+  <div class="chip" data-filter="Meeting">Meeting</div>
+  <div class="chip" data-filter="Note">Note</div>
+  <div class="chip" data-filter="SMS">SMS</div>
+  <div class="chip" data-filter="Follow-Up">Follow-Up</div>
+</div>
+
+<div class="feed" id="feed">
+  <div class="loading">Loading…</div>
+</div>
+
+<script>
+const APP_NAME    = "type-formsheet-2-18-21";
+const FORM_NAME   = "Communication_Log";
+const REPORT_NAME = "All_Communication_Log";
+
+const ICONS = {
+  Email:       "\u2709",
+  Call:        "\u260E",
+  Meeting:     "\u{1F4C5}",
+  Note:        "\u{1F4DD}",
+  SMS:         "\u{1F4AC}",
+  "Follow-Up": "\u23F0"
+};
+
+let ctx = { client_id: null, lead_id: null, rep_id: null, project_id: null, manufacturer_id: null };
+let allRecords = [];
+let activeFilter = "All";
+
+function escapeHtml(s) {
+  if (!s && s !== 0) return "";
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  const sameYear = d.getFullYear() === now.getFullYear();
+  if (sameYear) {
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " +
+           d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function iconClass(type) {
+  return (type || "").toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function directionLabel(dir) {
+  if (dir === "Inbound") return "\u2199 in";
+  if (dir === "Outbound") return "\u2197 out";
+  if (dir === "Internal Note") return "\u2022 internal";
+  return "";
+}
+
+function lookupDisplay(fld) {
+  if (!fld) return "";
+  if (typeof fld === "string") return fld;
+  if (fld.display_value) return fld.display_value;
+  if (fld.zc_display_value) return fld.zc_display_value;
+  return "";
+}
+
+function showMsg(kind, text) {
+  const area = document.getElementById("msg-area");
+  area.innerHTML = '<div class="' + kind + '">' + escapeHtml(text) + '</div>';
+  setTimeout(() => { area.innerHTML = ""; }, 4000);
+}
+
+function renderFeed() {
+  const feed = document.getElementById("feed");
+  const filtered = activeFilter === "All"
+    ? allRecords
+    : allRecords.filter(r => r.Communication_Type === activeFilter);
+
+  if (!filtered.length) {
+    feed.innerHTML = '<div class="empty">No communication logged yet. Use the form above to add the first entry.</div>';
+    return;
+  }
+
+  feed.innerHTML = filtered.map(r => {
+    const type         = r.Communication_Type || "Note";
+    const direction    = r.Direction || "";
+    const subject      = r.Subject || "";
+    const body         = r.Body || "";
+    const rep          = lookupDisplay(r.Client_Representative);
+    const internalRep  = lookupDisplay(r.Internal_Rep);
+    const icon         = ICONS[type] || ICONS.Note;
+
+    return (
+      '<div class="entry">' +
+        '<div class="entry-icon ' + iconClass(type) + '">' + icon + '</div>' +
+        '<div class="entry-body">' +
+          '<div class="entry-header-row">' +
+            '<span class="entry-type">' + escapeHtml(type) + '</span>' +
+            (direction ? '<span class="entry-direction">' + directionLabel(direction) + '</span>' : '') +
+            (rep ? '<span class="entry-direction">\u00B7 ' + escapeHtml(rep) + '</span>' : '') +
+          '</div>' +
+          (subject ? '<div class="entry-subject">' + escapeHtml(subject) + '</div>' : '') +
+          (body ? '<div class="entry-content">' + escapeHtml(body) + '</div>' : '') +
+          (internalRep ? '<div class="entry-rep">logged by ' + escapeHtml(internalRep) + '</div>' : '') +
+        '</div>' +
+        '<div class="entry-meta">' + escapeHtml(fmtTime(r.Timestamp)) + '</div>' +
+      '</div>'
+    );
+  }).join("");
+}
+
+function buildCriteria() {
+  const parts = [];
+  if (ctx.client_id)  parts.push('Client==' + ctx.client_id);
+  if (ctx.lead_id)    parts.push('Related_Lead==' + ctx.lead_id);
+  if (ctx.rep_id)     parts.push('Client_Representative==' + ctx.rep_id);
+  if (ctx.project_id) parts.push('Related_Project==' + ctx.project_id);
+  return parts.join(" && ");
+}
+
+function loadRecords() {
+  const criteria = buildCriteria();
+  return ZOHO.CREATOR.API.getAllRecords({
+    appName:     APP_NAME,
+    reportName:  REPORT_NAME,
+    criteria:    criteria,
+    max_records: 200
+  }).then(function(resp) {
+    allRecords = (resp && resp.data) ? resp.data : [];
+    allRecords.sort((a, b) => {
+      const da = new Date(a.Timestamp || a.Added_Time || 0);
+      const db = new Date(b.Timestamp || b.Added_Time || 0);
+      return db - da;
+    });
+    renderFeed();
+  }).catch(function(err) {
+    document.getElementById("feed").innerHTML =
+      '<div class="error">Failed to load: ' + escapeHtml(JSON.stringify(err)) + '</div>';
+  });
+}
+
+function saveEntry() {
+  const btn       = document.getElementById("save-btn");
+  const type      = document.getElementById("type").value;
+  const direction = document.getElementById("direction").value;
+  const subject   = document.getElementById("subject").value.trim();
+  const body      = document.getElementById("body").value.trim();
+
+  if (!body && !subject) {
+    showMsg("error", "Add a subject or body before logging.");
+    return;
+  }
+  if (!ctx.client_id) {
+    showMsg("error", "No client_id in widget params — cannot save.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Saving\u2026";
+
+  const data = {
+    Client:             ctx.client_id,
+    Communication_Type: type,
+    Direction:          direction,
+    Subject:            subject,
+    Body:               body
+  };
+  if (ctx.lead_id)          data.Related_Lead          = ctx.lead_id;
+  if (ctx.rep_id)           data.Client_Representative = ctx.rep_id;
+  if (ctx.project_id)       data.Related_Project       = ctx.project_id;
+  // Manufacturer is auto-populated by Communication_Log form workflow (On Add → On Validate)
+
+  ZOHO.CREATOR.API.addRecord({
+    appName:  APP_NAME,
+    formName: FORM_NAME,
+    data:     { data: data }
+  }).then(function(resp) {
+    if (resp && (resp.code === 3000 || resp.result)) {
+      document.getElementById("subject").value = "";
+      document.getElementById("body").value = "";
+      showMsg("success", "Logged.");
+      return loadRecords();
+    } else {
+      showMsg("error", "Save failed: " + JSON.stringify(resp));
+    }
+  }).catch(function(err) {
+    showMsg("error", "Save error: " + JSON.stringify(err));
+  }).finally(function() {
+    btn.disabled = false;
+    btn.textContent = "Log";
+  });
+}
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", function() {
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    this.classList.add("active");
+    activeFilter = this.dataset.filter;
+    renderFeed();
+  });
+});
+
+document.getElementById("save-btn").addEventListener("click", saveEntry);
+
+ZOHO.CREATOR.init().then(function() {
+  return ZOHO.CREATOR.UTIL.getQueryParams();
+}).then(function(params) {
+  ctx.client_id       = params.client_id       || null;
+  ctx.lead_id         = params.lead_id         || null;
+  ctx.rep_id          = params.rep_id          || null;
+  ctx.project_id      = params.project_id      || null;
+  ctx.manufacturer_id = params.manufacturer_id || null;
+
+  if (!ctx.client_id) {
+    document.getElementById("feed").innerHTML =
+      '<div class="error">Widget requires a client_id parameter.</div>';
+    return;
+  }
+  return loadRecords();
+}).catch(function(err) {
+  document.getElementById("feed").innerHTML =
+    '<div class="error">Init error: ' + escapeHtml(JSON.stringify(err)) + '</div>';
+});
+</script>
+</body>
+</html>
