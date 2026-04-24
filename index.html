@@ -462,8 +462,7 @@ function saveEntry() {
   if (ctx.rep_id)           data.Client_Representative = ctx.rep_id;
   if (ctx.project_id)       data.Related_Project       = ctx.project_id;
   if (followupRaw) {
-    data.Follow_Up_Date         = toZohoDate(followupRaw);
-    data.Follow_Up_Requirements = true;
+    data.Follow_Up_Date = toZohoDate(followupRaw);
   }
 
   ZOHO.CREATOR.API.addRecord({
