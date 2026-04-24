@@ -317,7 +317,7 @@ function fmtDateShort(str) {
 function toZohoDate(yyyymmdd) {
   if (!yyyymmdd) return "";
   const [y, m, d] = yyyymmdd.split('-');
-  return d + '-' + MONTHS[parseInt(m, 10) - 1] + '-' + y;
+  return MONTHS[parseInt(m, 10) - 1] + ' ' + d + ', ' + y;
 }
 
 function iconClass(type) {
