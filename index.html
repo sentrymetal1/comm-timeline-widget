@@ -185,6 +185,23 @@
     white-space: pre-wrap;
     word-wrap: break-word;
   }
+  .entry-content.clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .read-more {
+    background: transparent;
+    border: none;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 0 0 0;
+    margin: 0;
+  }
+  .read-more:hover { text-decoration: underline; }
   .entry-rep {
     font-size: 11px;
     color: #9ca3af;
@@ -372,6 +389,7 @@ function renderFeed() {
     const internalRep  = lookupDisplay(r.Internal_Rep);
     const followDate   = r.Follow_Up_Date || "";
     const icon         = ICONS[type] || ICONS.Note;
+    const bodyLong     = body && (body.length > 220 || body.split('\n').length > 3);
 
     return (
       '<div class="entry">' +
@@ -383,7 +401,8 @@ function renderFeed() {
             (rep ? '<span class="entry-direction">· ' + escapeHtml(rep) + '</span>' : '') +
           '</div>' +
           (subject ? '<div class="entry-subject">' + escapeHtml(subject) + '</div>' : '') +
-          (body ? '<div class="entry-content">' + escapeHtml(body) + '</div>' : '') +
+          (body ? '<div class="entry-content' + (bodyLong ? ' clamped' : '') + '">' + escapeHtml(body) + '</div>' : '') +
+          (bodyLong ? '<button type="button" class="read-more">Read more</button>' : '') +
           (followDate ? '<div class="entry-followup">⏰ Follow-up ' + escapeHtml(fmtDateShort(followDate)) + '</div>' : '') +
           (internalRep ? '<div class="entry-rep">logged by ' + escapeHtml(internalRep) + '</div>' : '') +
         '</div>' +
@@ -510,6 +529,15 @@ document.getElementById("fu-clear").addEventListener("click", function(e) {
   const input = document.getElementById("followup-date");
   input.value = "";
   document.getElementById("followup-wrap").classList.remove("has-date");
+});
+
+document.getElementById("feed").addEventListener("click", function(e) {
+  if (!e.target.classList.contains("read-more")) return;
+  const content = e.target.previousElementSibling;
+  if (content && content.classList.contains("entry-content")) {
+    content.classList.toggle("clamped");
+    e.target.textContent = content.classList.contains("clamped") ? "Read more" : "Show less";
+  }
 });
 
 ZOHO.CREATOR.init().then(function() {
