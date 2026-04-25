@@ -106,6 +106,82 @@
   .followup-label .fu-clear:hover { color: #dc2626; background: transparent; }
   .followup-label.has-date .fu-clear { display: inline-block; }
 
+  .compose-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    min-width: 28px;
+  }
+  .quick-log input.to-email {
+    flex: 1;
+    font-size: 13px;
+  }
+  .attach-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px dashed #c4cad5;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #5F94CE;
+    font-weight: 600;
+    user-select: none;
+    background: #fff;
+  }
+  .attach-trigger:hover { border-color: #5F94CE; background: #EAF1F9; }
+  .attach-trigger input[type="file"] { display: none; }
+  .attach-counter {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-left: 4px;
+  }
+  .attach-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .attach-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #EAF1F9;
+    color: #2d2d2d;
+    border-radius: 12px;
+    padding: 3px 4px 3px 10px;
+    font-size: 11px;
+    max-width: 240px;
+  }
+  .attach-pill .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .attach-pill button {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .attach-pill button:hover { color: #dc2626; background: transparent; }
+
+  .entry-sent-badge {
+    display: inline-block;
+    background: #dcfce7;
+    color: #16a34a;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+
   .filter-chips {
     display: flex;
     gap: 6px;
@@ -251,7 +327,19 @@
     </select>
     <input type="text" class="subject" id="subject" placeholder="Subject (optional)" />
   </div>
+  <div class="ql-row compose-only" id="compose-to-row" style="display:none">
+    <span class="compose-label">To:</span>
+    <input type="email" class="to-email" id="to-email" placeholder="recipient@example.com" />
+  </div>
   <textarea id="body" placeholder="Log an interaction&#8230;"></textarea>
+  <div class="ql-row compose-only" id="attachments-row" style="display:none">
+    <label class="attach-trigger">
+      <span>&#128206; Attach files</span>
+      <input type="file" id="attachments-input" multiple />
+    </label>
+    <span class="attach-counter" id="attach-counter"></span>
+    <div class="attach-list" id="attachments-list"></div>
+  </div>
   <div class="ql-row end">
     <label class="followup-label" id="followup-wrap">
       <span class="fu-icon">&#128197;</span>
@@ -293,9 +381,12 @@ const ICONS = {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-let ctx = { client_id: null, lead_id: null, rep_id: null, project_id: null, manufacturer_id: null };
+let ctx = { client_id: null, lead_id: null, rep_id: null, rep_email: null, project_id: null, manufacturer_id: null };
 let allRecords = [];
 let activeFilter = "All";
+let selectedFiles = [];
+const MAX_ATTACHMENTS = 10;
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20 MB — conservative under Zoho's ~25 MB cap
 
 function escapeHtml(s) {
   if (!s && s !== 0) return "";
@@ -389,8 +480,11 @@ function renderFeed() {
     const rep          = lookupDisplay(r.Client_Representative);
     const internalRep  = lookupDisplay(r.Internal_Rep);
     const followDate   = r.Follow_Up_Date || "";
+    const toEmail      = r.To_Email || "";
+    const emailSent    = r.Email_Sent === "Sent";
     const icon         = ICONS[type] || ICONS.Note;
     const bodyLong     = body && (body.length > 220 || body.split('\n').length > 3);
+    const isOutbound   = type === "Email" && direction === "Outbound";
 
     return (
       '<div class="entry">' +
@@ -400,8 +494,10 @@ function renderFeed() {
             '<span class="entry-type">' + escapeHtml(type) + '</span>' +
             (direction ? '<span class="entry-direction">' + directionLabel(direction) + '</span>' : '') +
             (rep ? '<span class="entry-direction">· ' + escapeHtml(rep) + '</span>' : '') +
+            (isOutbound && emailSent ? '<span class="entry-sent-badge">✓ SENT</span>' : '') +
           '</div>' +
           (subject ? '<div class="entry-subject">' + escapeHtml(subject) + '</div>' : '') +
+          (isOutbound && toEmail ? '<div class="entry-rep">to ' + escapeHtml(toEmail) + '</div>' : '') +
           (body ? '<div class="entry-content' + (bodyLong ? ' clamped' : '') + '">' + escapeHtml(body) + '</div>' : '') +
           (bodyLong ? '<button type="button" class="read-more">Read more</button>' : '') +
           (followDate ? '<div class="entry-followup">⏰ Follow-up ' + escapeHtml(fmtDateShort(followDate)) + '</div>' : '') +
@@ -451,6 +547,18 @@ function loadRecords() {
 }
 
 function saveEntry() {
+  if (!ctx.client_id) {
+    showMsg("error", "No client_id in widget params - cannot save.");
+    return;
+  }
+  if (isComposeMode()) {
+    sendEmail();
+  } else {
+    logEntry();
+  }
+}
+
+function logEntry() {
   const btn          = document.getElementById("save-btn");
   const type         = document.getElementById("type").value;
   const direction    = document.getElementById("direction").value;
@@ -460,10 +568,6 @@ function saveEntry() {
 
   if (!body && !subject) {
     showMsg("error", "Add a subject or body before logging.");
-    return;
-  }
-  if (!ctx.client_id) {
-    showMsg("error", "No client_id in widget params - cannot save.");
     return;
   }
 
@@ -504,9 +608,190 @@ function saveEntry() {
     showMsg("error", "Save error: " + JSON.stringify(err));
   }).finally(function() {
     btn.disabled = false;
-    btn.textContent = "Log";
+    updateUIMode();
   });
 }
+
+function extractRecordId(resp) {
+  if (!resp) return null;
+  if (resp.data && resp.data.ID) return resp.data.ID;
+  if (Array.isArray(resp.data) && resp.data[0] && resp.data[0].ID) return resp.data[0].ID;
+  if (Array.isArray(resp.result) && resp.result[0]) {
+    const r = resp.result[0];
+    if (r.data && r.data.ID) return r.data.ID;
+    if (r.ID) return r.ID;
+  }
+  return null;
+}
+
+function uploadAttachments(recordId) {
+  if (!selectedFiles.length) return Promise.resolve();
+  let chain = Promise.resolve();
+  selectedFiles.forEach(function(file) {
+    chain = chain.then(function() {
+      return ZOHO.CREATOR.API.uploadFile({
+        appName:    APP_NAME,
+        reportName: REPORT_NAME,
+        id:         recordId,
+        fieldName:  "Attachments",
+        data:       file
+      });
+    });
+  });
+  return chain;
+}
+
+function sendEmail() {
+  const btn         = document.getElementById("save-btn");
+  const subject     = document.getElementById("subject").value.trim();
+  const body        = document.getElementById("body").value.trim();
+  const toEmail     = document.getElementById("to-email").value.trim();
+  const followupRaw = document.getElementById("followup-date").value;
+
+  if (!toEmail) {
+    showMsg("error", "To address is required.");
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) {
+    showMsg("error", "To address doesn't look like a valid email.");
+    return;
+  }
+  if (!subject && !body) {
+    showMsg("error", "Add a subject or body before sending.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+
+  // Step 1: addRecord WITHOUT To_Email — workflow guard blocks premature send
+  const data = {
+    Client:             ctx.client_id,
+    Communication_Type: "Email",
+    Direction:          "Outbound",
+    Subject:            subject,
+    Body:               body
+  };
+  if (ctx.lead_id)    data.Related_Lead          = ctx.lead_id;
+  if (ctx.rep_id)     data.Client_Representative = ctx.rep_id;
+  if (ctx.project_id) data.Related_Project       = ctx.project_id;
+  if (followupRaw)    data.Follow_Up_Date        = toZohoDate(followupRaw);
+
+  let newRecordId = null;
+
+  ZOHO.CREATOR.API.addRecord({
+    appName:  APP_NAME,
+    formName: FORM_NAME,
+    data:     { data: data }
+  }).then(function(resp) {
+    if (!resp || (resp.code !== 3000 && !resp.result)) {
+      throw new Error("addRecord failed: " + JSON.stringify(resp));
+    }
+    newRecordId = extractRecordId(resp);
+    if (!newRecordId) throw new Error("No record ID in addRecord response");
+
+    // Step 2: upload attachments (sequential — multi-file appends to Attachments)
+    if (selectedFiles.length) btn.textContent = "Uploading…";
+    return uploadAttachments(newRecordId);
+  }).then(function() {
+    // Step 3: updateRecord with To_Email — On Edit fires workflow, email sends
+    btn.textContent = "Sending…";
+    return ZOHO.CREATOR.API.updateRecord({
+      appName:    APP_NAME,
+      reportName: REPORT_NAME,
+      id:         newRecordId,
+      data:       { data: { To_Email: toEmail } }
+    });
+  }).then(function(resp) {
+    if (!resp || (resp.code !== 3000 && !resp.result)) {
+      throw new Error("updateRecord failed: " + JSON.stringify(resp));
+    }
+    document.getElementById("subject").value = "";
+    document.getElementById("body").value = "";
+    document.getElementById("followup-date").value = "";
+    document.getElementById("followup-wrap").classList.remove("has-date");
+    resetCompose();
+    showMsg("success", "Email sent.");
+    return loadRecords();
+  }).catch(function(err) {
+    showMsg("error", "Send error: " + (err.message || JSON.stringify(err)));
+  }).finally(function() {
+    btn.disabled = false;
+    updateUIMode();
+  });
+}
+
+function isComposeMode() {
+  return document.getElementById("type").value === "Email"
+      && document.getElementById("direction").value === "Outbound";
+}
+
+function updateUIMode() {
+  const compose = isComposeMode();
+  document.querySelectorAll(".compose-only").forEach(el => {
+    el.style.display = compose ? "flex" : "none";
+  });
+  document.getElementById("save-btn").textContent = compose ? "Send Email" : "Log";
+  if (compose) {
+    const toInput = document.getElementById("to-email");
+    if (!toInput.value && ctx.rep_email) toInput.value = ctx.rep_email;
+  }
+}
+
+function renderAttachments() {
+  const list = document.getElementById("attachments-list");
+  const counter = document.getElementById("attach-counter");
+  if (!selectedFiles.length) {
+    list.innerHTML = "";
+    counter.textContent = "";
+    return;
+  }
+  const totalBytes = selectedFiles.reduce((s, f) => s + f.size, 0);
+  const mb = (totalBytes / 1024 / 1024).toFixed(1);
+  counter.textContent = selectedFiles.length + " file" + (selectedFiles.length > 1 ? "s" : "") + " · " + mb + " MB";
+  list.innerHTML = selectedFiles.map((f, i) =>
+    '<span class="attach-pill">' +
+      '<span class="name">' + escapeHtml(f.name) + '</span>' +
+      '<button type="button" data-i="' + i + '" title="Remove">&times;</button>' +
+    '</span>'
+  ).join("");
+}
+
+function resetCompose() {
+  document.getElementById("to-email").value = "";
+  selectedFiles = [];
+  renderAttachments();
+}
+
+document.getElementById("type").addEventListener("change", updateUIMode);
+document.getElementById("direction").addEventListener("change", updateUIMode);
+
+document.getElementById("attachments-input").addEventListener("change", function(e) {
+  const incoming = Array.from(e.target.files || []);
+  if (selectedFiles.length + incoming.length > MAX_ATTACHMENTS) {
+    showMsg("error", "Max " + MAX_ATTACHMENTS + " attachments per email.");
+    e.target.value = "";
+    return;
+  }
+  const projected = selectedFiles.concat(incoming);
+  const total = projected.reduce((s, f) => s + f.size, 0);
+  if (total > MAX_TOTAL_BYTES) {
+    showMsg("error", "Total attachment size exceeds 20 MB (Zoho cap).");
+    e.target.value = "";
+    return;
+  }
+  selectedFiles = projected;
+  renderAttachments();
+  e.target.value = "";
+});
+
+document.getElementById("attachments-list").addEventListener("click", function(e) {
+  const btn = e.target.closest("button[data-i]");
+  if (!btn) return;
+  const i = parseInt(btn.dataset.i, 10);
+  selectedFiles.splice(i, 1);
+  renderAttachments();
+});
 
 document.querySelectorAll(".chip").forEach(chip => {
   chip.addEventListener("click", function() {
@@ -547,8 +832,10 @@ ZOHO.CREATOR.init().then(function() {
   ctx.client_id       = params.client_id       || null;
   ctx.lead_id         = params.lead_id         || null;
   ctx.rep_id          = params.rep_id          || null;
+  ctx.rep_email       = params.rep_email       || null;
   ctx.project_id      = params.project_id      || null;
   ctx.manufacturer_id = params.manufacturer_id || null;
+  updateUIMode();
 
   if (!ctx.client_id) {
     document.getElementById("feed").innerHTML =
