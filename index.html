@@ -475,7 +475,7 @@ function renderFeed() {
   feed.innerHTML = filtered.map(r => {
     const type         = r.Communication_Type || "Note";
     const direction    = r.Direction || "";
-    const subject      = r.Subject || "";
+    const subject      = r.Subject_field || "";
     const body         = r.Body || "";
     const rep          = lookupDisplay(r.Client_Representative);
     const internalRep  = lookupDisplay(r.Internal_Rep);
@@ -578,7 +578,7 @@ function logEntry() {
     Client:             ctx.client_id,
     Communication_Type: type,
     Direction:          direction,
-    Subject:            subject,
+    Subject_field:      subject,
     Body:               body
     // TimeStamp + Manufacturer auto-populated by Communication_Log form workflow
   };
@@ -669,7 +669,7 @@ function sendEmail() {
     Client:             ctx.client_id,
     Communication_Type: "Email",
     Direction:          "Outbound",
-    Subject:            subject,
+    Subject_field:      subject,
     Body:               body
   };
   if (ctx.lead_id)    data.Related_Lead          = ctx.lead_id;
