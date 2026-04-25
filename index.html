@@ -634,7 +634,10 @@ function uploadAttachments(recordId) {
         reportName: REPORT_NAME,
         id:         recordId,
         fieldName:  "Attachments",
-        data:       file
+        file:       file
+      }).catch(function(err) {
+        const txt = (err && err.responseText) ? err.responseText : JSON.stringify(err || {});
+        throw new Error("uploadFile failed on " + file.name + ": " + txt);
       });
     });
   });
@@ -683,9 +686,12 @@ function sendEmail() {
     appName:  APP_NAME,
     formName: FORM_NAME,
     data:     { data: data }
+  }).catch(function(err) {
+    const txt = (err && err.responseText) ? err.responseText : JSON.stringify(err || {});
+    throw new Error("addRecord failed: " + txt);
   }).then(function(resp) {
     if (!resp || (resp.code !== 3000 && !resp.result)) {
-      throw new Error("addRecord failed: " + JSON.stringify(resp));
+      throw new Error("addRecord returned bad shape: " + JSON.stringify(resp));
     }
     newRecordId = extractRecordId(resp);
     if (!newRecordId) throw new Error("No record ID in addRecord response");
@@ -701,10 +707,13 @@ function sendEmail() {
       reportName: REPORT_NAME,
       id:         newRecordId,
       data:       { data: { To_Email: toEmail } }
+    }).catch(function(err) {
+      const txt = (err && err.responseText) ? err.responseText : JSON.stringify(err || {});
+      throw new Error("updateRecord failed: " + txt);
     });
   }).then(function(resp) {
     if (!resp || (resp.code !== 3000 && !resp.result)) {
-      throw new Error("updateRecord failed: " + JSON.stringify(resp));
+      throw new Error("updateRecord returned bad shape: " + JSON.stringify(resp));
     }
     document.getElementById("subject").value = "";
     document.getElementById("body").value = "";
