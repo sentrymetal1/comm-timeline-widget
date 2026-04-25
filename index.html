@@ -381,7 +381,7 @@ const ICONS = {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-let ctx = { client_id: null, lead_id: null, rep_id: null, rep_email: null, project_id: null, manufacturer_id: null };
+let ctx = { client_id: null, lead_id: null, rep_id: null, rep_email: null, rep_name: null, project_id: null, manufacturer_id: null };
 let allRecords = [];
 let activeFilter = "All";
 let selectedFiles = [];
@@ -735,6 +735,11 @@ function isComposeMode() {
       && document.getElementById("direction").value === "Outbound";
 }
 
+function repFirstName() {
+  if (!ctx.rep_name) return "";
+  return ctx.rep_name.trim().split(/\s+/)[0];
+}
+
 function updateUIMode() {
   const compose = isComposeMode();
   document.querySelectorAll(".compose-only").forEach(el => {
@@ -744,6 +749,13 @@ function updateUIMode() {
   if (compose) {
     const toInput = document.getElementById("to-email");
     if (!toInput.value && ctx.rep_email) toInput.value = ctx.rep_email;
+
+    const bodyEl = document.getElementById("body");
+    const firstName = repFirstName();
+    if (!bodyEl.value && firstName) {
+      bodyEl.value = "Hi " + firstName + ",\n\n";
+      bodyEl.setSelectionRange(bodyEl.value.length, bodyEl.value.length);
+    }
   }
 }
 
@@ -842,6 +854,7 @@ ZOHO.CREATOR.init().then(function() {
   ctx.lead_id         = params.lead_id         || null;
   ctx.rep_id          = params.rep_id          || null;
   ctx.rep_email       = params.rep_email       || null;
+  ctx.rep_name        = params.rep_name        || null;
   ctx.project_id      = params.project_id      || null;
   ctx.manufacturer_id = params.manufacturer_id || null;
   updateUIMode();
