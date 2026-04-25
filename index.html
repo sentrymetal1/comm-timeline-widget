@@ -181,6 +181,17 @@
     border-radius: 4px;
     margin-left: 4px;
   }
+  .entry-error-badge {
+    display: inline-block;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    cursor: help;
+  }
 
   .filter-chips {
     display: flex;
@@ -482,6 +493,7 @@ function renderFeed() {
     const followDate   = r.Follow_Up_Date || "";
     const toEmail      = r.To_Email || "";
     const emailSent    = r.Email_Sent === "Sent";
+    const sendError    = r.Send_Error || "";
     const icon         = ICONS[type] || ICONS.Note;
     const bodyLong     = body && (body.length > 220 || body.split('\n').length > 3);
     const isOutbound   = type === "Email" && direction === "Outbound";
@@ -495,6 +507,7 @@ function renderFeed() {
             (direction ? '<span class="entry-direction">' + directionLabel(direction) + '</span>' : '') +
             (rep ? '<span class="entry-direction">· ' + escapeHtml(rep) + '</span>' : '') +
             (isOutbound && emailSent ? '<span class="entry-sent-badge">✓ SENT</span>' : '') +
+            (isOutbound && !emailSent && sendError ? '<span class="entry-error-badge" title="' + escapeHtml(sendError) + '">✗ FAILED</span>' : '') +
           '</div>' +
           (subject ? '<div class="entry-subject">' + escapeHtml(subject) + '</div>' : '') +
           (isOutbound && toEmail ? '<div class="entry-rep">to ' + escapeHtml(toEmail) + '</div>' : '') +
@@ -659,8 +672,12 @@ function sendEmail() {
     showMsg("error", "To address doesn't look like a valid email.");
     return;
   }
-  if (!subject && !body) {
-    showMsg("error", "Add a subject or body before sending.");
+  if (!subject) {
+    showMsg("error", "Subject is required.");
+    return;
+  }
+  if (!body) {
+    showMsg("error", "Body is required.");
     return;
   }
 
