@@ -7,10 +7,11 @@
 <meta http-equiv="Expires" content="0">
 <title>Communication Timeline</title>
 <script src="https://js.zohostatic.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     color: #2d2d2d;
     background: #f5f6f8;
@@ -49,7 +50,7 @@
   }
   .quick-log select:focus,
   .quick-log input:focus,
-  .quick-log textarea:focus { border-color: #2563eb; }
+  .quick-log textarea:focus { border-color: #5F94CE; }
   .quick-log select { width: 140px; }
   .quick-log input.subject { flex: 1; }
   .quick-log textarea {
@@ -58,7 +59,7 @@
     resize: vertical;
   }
   .quick-log button {
-    background: #2563eb;
+    background: #5F94CE;
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -68,8 +69,8 @@
     cursor: pointer;
     transition: background 0.15s;
   }
-  .quick-log button:hover { background: #1d4ed8; }
-  .quick-log button:disabled { background: #93c5fd; cursor: not-allowed; }
+  .quick-log button:hover { background: #4A7BB5; }
+  .quick-log button:disabled { background: #A5C2DD; cursor: not-allowed; }
 
   .followup-label {
     display: flex;
@@ -92,7 +93,7 @@
     outline: none;
     min-width: 140px;
   }
-  .followup-label input[type="date"]:focus { border-color: #2563eb; }
+  .followup-label input[type="date"]:focus { border-color: #5F94CE; }
   .followup-label .fu-clear {
     border: none;
     background: transparent;
@@ -123,8 +124,8 @@
     transition: all 0.15s;
     user-select: none;
   }
-  .chip:hover { color: #2563eb; border-color: #2563eb; }
-  .chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .chip:hover { color: #5F94CE; border-color: #5F94CE; }
+  .chip.active { background: #5F94CE; color: #fff; border-color: #5F94CE; }
   .chip.active:hover { color: #fff; }
 
   .feed { display: flex; flex-direction: column; gap: 10px; }
@@ -149,7 +150,7 @@
     font-size: 15px;
     font-weight: 600;
   }
-  .entry-icon.email    { background: #eff6ff; color: #2563eb; }
+  .entry-icon.email    { background: #EAF1F9; color: #5F94CE; }
   .entry-icon.call     { background: #f0fdf4; color: #16a34a; }
   .entry-icon.meeting  { background: #fef3c7; color: #b45309; }
   .entry-icon.note     { background: #f3f4f6; color: #6b7280; }
@@ -194,7 +195,7 @@
   .read-more {
     background: transparent;
     border: none;
-    color: #2563eb;
+    color: #5F94CE;
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
